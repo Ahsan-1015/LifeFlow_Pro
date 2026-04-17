@@ -44,7 +44,7 @@ export const roleMenus = {
     { key: "teamtasks", label: "Team Tasks", to: "/dashboard/team-tasks" },
     { key: "kanban", label: "Kanban Board", to: "/dashboard/kanban" },
     { key: "reviews", label: "Reviews", to: "/dashboard/reviews" },
-    { key: "messages", label: "Messages", to: "/dashboard/messages" },
+    { key: "messages", label: "Messages", to: "/messages" },
     { key: "reports", label: "Reports", to: "/dashboard/reports" },
   ],
   member: [
@@ -52,7 +52,7 @@ export const roleMenus = {
     { key: "mytasks", label: "My Tasks", to: "/dashboard/my-tasks" },
     { key: "projects", label: "Projects", to: "/projects" },
     { key: "calendar", label: "Calendar", to: "/dashboard/calendar" },
-    { key: "messages", label: "Messages", to: "/notifications" },
+    { key: "messages", label: "Messages", to: "/messages" },
     { key: "files", label: "Files", to: "/dashboard/files" },
     { key: "profile", label: "Profile", to: "/profile" },
   ],

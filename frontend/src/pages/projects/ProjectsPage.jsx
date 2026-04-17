@@ -5,10 +5,15 @@ import { Link } from "react-router-dom";
 import api from "../../api/client";
 import ProjectModal from "../../components/modals/ProjectModal";
 import SkeletonCard from "../../components/common/SkeletonCard";
+import { useAuth } from "../../context/AuthContext";
+import { normalizeRole } from "../../utils/roles";
 
 const PROJECTS_CACHE_KEY = "flowpilot_projects_cache";
 
 const ProjectsPage = () => {
+  const { user } = useAuth();
+  const role = normalizeRole(user?.role);
+  const canManageProjects = role === "super_admin" || role === "owner";
   const [projects, setProjects] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -90,6 +95,11 @@ const ProjectsPage = () => {
         <div>
           {refreshing ? <p className="text-sm text-slate-500">Refreshing projects...</p> : null}
           {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
+          {!canManageProjects ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              You can view project boards shared with you, but project creation and edits are limited to owners and admins.
+            </p>
+          ) : null}
         </div>
         <div className="flex gap-3">
           <button
@@ -99,10 +109,12 @@ const ProjectsPage = () => {
           >
             Retry
           </button>
-          <button type="button" className="gradient-button" onClick={() => setModalOpen(true)}>
-            <Plus size={18} />
-            <span className="ml-2">Create Project</span>
-          </button>
+          {canManageProjects ? (
+            <button type="button" className="gradient-button" onClick={() => setModalOpen(true)}>
+              <Plus size={18} />
+              <span className="ml-2">Create Project</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -128,25 +140,27 @@ const ProjectsPage = () => {
                   <p className="text-xs uppercase tracking-[0.25em] text-brand-500">Project</p>
                   <h3 className="mt-2 font-display text-2xl font-bold">{project.title}</h3>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingProject(project);
-                      setModalOpen(true);
-                    }}
-                    className="rounded-2xl bg-slate-100 p-3 dark:bg-slate-800"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(project._id)}
-                    className="rounded-2xl bg-rose-100 p-3 text-rose-600 dark:bg-rose-500/10"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                {canManageProjects ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingProject(project);
+                        setModalOpen(true);
+                      }}
+                      className="rounded-2xl bg-slate-100 p-3 dark:bg-slate-800"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(project._id)}
+                      className="rounded-2xl bg-rose-100 p-3 text-rose-600 dark:bg-rose-500/10"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               <p className="mt-4 line-clamp-3 text-sm text-slate-600 dark:text-slate-300">{project.description}</p>
@@ -170,16 +184,18 @@ const ProjectsPage = () => {
         </div>
       )}
 
-      <ProjectModal
-        open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditingProject(null);
-        }}
-        onSubmit={handleSave}
-        initialValues={editingProject}
-        loading={loading}
-      />
+      {canManageProjects ? (
+        <ProjectModal
+          open={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setEditingProject(null);
+          }}
+          onSubmit={handleSave}
+          initialValues={editingProject}
+          loading={loading}
+        />
+      ) : null}
     </>
   );
 };

@@ -67,3 +67,37 @@ body {
 .soft-ring {
   @apply ring-1 ring-white/50 dark:ring-white/10;
 }
+
+.premium-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(14, 165, 233, 0.5) transparent;
+}
+
+.premium-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.premium-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.premium-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(59, 130, 246, 0.75), rgba(6, 182, 212, 0.65)) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(148, 163, 184, 0.08)) border-box;
+  background-clip: padding-box, border-box;
+}
+
+.premium-scroll::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgba(37, 99, 235, 0.9), rgba(8, 145, 178, 0.82)) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(148, 163, 184, 0.12)) border-box;
+  background-clip: padding-box, border-box;
+}
+
+.dark .premium-scroll {
+  scrollbar-color: rgba(56, 189, 248, 0.5) transparent;
+}

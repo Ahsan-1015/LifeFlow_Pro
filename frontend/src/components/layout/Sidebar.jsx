@@ -51,16 +51,20 @@ const iconMap = {
   feedback: MessageSquare,
 };
 
-const Sidebar = () => {
+const Sidebar = ({ onNavigate }) => {
   const { logout, user } = useAuth();
   const { unreadCount } = useNotifications();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const role = normalizeRole(user?.role);
   const navItems = roleMenus[role] || roleMenus.member;
+  const handleNavigate = (path) => {
+    navigate(path);
+    onNavigate?.();
+  };
 
   return (
-    <aside className="glass-panel flex h-full flex-col gap-6 p-5">
+    <aside className="premium-scroll glass-panel flex h-full min-h-0 flex-col gap-6 overflow-y-auto overscroll-contain p-5 lg:h-[calc(100vh-3rem)]">
       <div>
         <div className="mb-1 text-xs font-semibold uppercase tracking-[0.3em] text-brand-500">FlowPilot</div>
         <h1 className="font-display text-2xl font-bold">Team momentum, organized.</h1>
@@ -84,6 +88,7 @@ const Sidebar = () => {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={() => onNavigate?.()}
             className={({ isActive }) =>
               `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                 isActive
@@ -107,7 +112,7 @@ const Sidebar = () => {
       <div className="space-y-2">
         <button
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => handleNavigate("/")}
           className="flex w-full items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-200"
         >
           <Home size={18} />
@@ -115,7 +120,7 @@ const Sidebar = () => {
         </button>
         <button
           type="button"
-          onClick={() => navigate("/search")}
+          onClick={() => handleNavigate("/search")}
           className="flex w-full items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-200"
         >
           <Search size={18} />
@@ -123,7 +128,10 @@ const Sidebar = () => {
         </button>
         <button
           type="button"
-          onClick={toggleTheme}
+          onClick={() => {
+            toggleTheme();
+            onNavigate?.();
+          }}
           className="flex w-full items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white dark:bg-slate-800/80 dark:text-slate-200"
         >
           {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
@@ -134,6 +142,7 @@ const Sidebar = () => {
           onClick={() => {
             logout();
             navigate("/login");
+            onNavigate?.();
           }}
           className="flex w-full items-center gap-3 rounded-2xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-600"
         >

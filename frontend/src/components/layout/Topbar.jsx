@@ -1,6 +1,6 @@
 import { Bell, ChevronRight, Mail, Menu, Moon, Search, Sun } from "lucide-react";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationContext";
@@ -13,12 +13,11 @@ const prettifySegment = (value) =>
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const Topbar = ({ title, description, onOpenSidebar }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { unreadCount } = useNotifications();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
 
   const breadcrumb = useMemo(() => {
     const segments = location.pathname.split("/").filter(Boolean);
@@ -46,8 +45,8 @@ const Topbar = ({ title, description, onOpenSidebar }) => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="hidden items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-300 sm:flex">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-2 rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-300 xl:flex">
             {breadcrumb.map((item, index) => (
               <div key={item} className="flex items-center gap-2">
                 {index > 0 ? <ChevronRight size={14} /> : null}
@@ -59,44 +58,29 @@ const Topbar = ({ title, description, onOpenSidebar }) => {
             <Bell size={18} />
             {unreadCount > 0 ? <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-rose-500" /> : null}
           </button>
-          <button type="button" className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+          <button
+            type="button"
+            onClick={() => navigate("/messages")}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800"
+          >
             <Mail size={18} />
           </button>
           <button type="button" onClick={toggleTheme} className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpen((current) => !current)}
-              className="flex items-center gap-3 rounded-2xl bg-slate-100 px-3 py-2 text-left dark:bg-slate-800"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-500 font-display text-lg font-bold text-white">
-                {user?.name?.[0] || "U"}
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-sm font-semibold">{user?.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{roleLabels[normalizeRole(user?.role)]}</p>
-              </div>
-            </button>
-            {open ? (
-              <div className="absolute right-0 top-14 z-20 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-                <button type="button" onClick={() => navigate("/profile")} className="flex w-full rounded-xl px-3 py-3 text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-slate-800">
-                  Open Profile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    logout();
-                    navigate("/login");
-                  }}
-                  className="flex w-full rounded-xl px-3 py-3 text-sm font-medium text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : null}
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/profile")}
+            className="flex max-w-full items-center gap-3 rounded-2xl bg-slate-100 px-3 py-2 text-left transition hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-500 font-display text-lg font-bold text-white">
+              {user?.name?.[0] || "U"}
+            </div>
+            <div className="min-w-0 max-w-[116px] sm:max-w-[148px]">
+              <p className="truncate text-sm font-semibold">{user?.name}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{roleLabels[normalizeRole(user?.role)]}</p>
+            </div>
+          </button>
         </div>
       </div>
 

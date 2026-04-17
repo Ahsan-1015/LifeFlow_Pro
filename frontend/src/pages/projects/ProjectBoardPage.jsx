@@ -8,6 +8,8 @@ import { getSocket } from "../../api/socket";
 import BoardColumn from "../../components/board/BoardColumn";
 import SkeletonCard from "../../components/common/SkeletonCard";
 import TaskModal from "../../components/modals/TaskModal";
+import { useAuth } from "../../context/AuthContext";
+import { normalizeRole } from "../../utils/roles";
 
 const boardColumns = [
   { id: "todo", title: "Todo", description: "Ideas ready to be picked up" },
@@ -20,6 +22,9 @@ const getBoardCacheKey = (projectId) => `flowpilot_project_${projectId}_cache`;
 
 const ProjectBoardPage = () => {
   const { projectId } = useParams();
+  const { user } = useAuth();
+  const role = normalizeRole(user?.role);
+  const canManageBoard = role === "super_admin" || role === "owner" || role === "manager";
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [project, setProject] = useState(null);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
@@ -249,17 +254,19 @@ const ProjectBoardPage = () => {
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedTask(null);
-              setTaskModalOpen(true);
-            }}
-            className="gradient-button"
-          >
-            <Plus size={18} />
-            <span className="ml-2">New Task</span>
-          </button>
+          {canManageBoard ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTask(null);
+                setTaskModalOpen(true);
+              }}
+              className="gradient-button"
+            >
+              <Plus size={18} />
+              <span className="ml-2">New Task</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -277,31 +284,40 @@ const ProjectBoardPage = () => {
           </div>
         </div>
 
-        <form onSubmit={handleInviteMember} className="glass-panel rounded-[2rem] p-5">
-          <h4 className="font-display text-2xl font-bold">Invite Member</h4>
-          <div className="mt-4 space-y-4">
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(event) => setInviteEmail(event.target.value)}
-              placeholder="member@company.com"
-              className="input-field"
-              required
-            />
-            <select
-              value={inviteRole}
-              onChange={(event) => setInviteRole(event.target.value)}
-              className="input-field"
-            >
-              <option value="admin">Admin</option>
-              <option value="manager">Manager</option>
-              <option value="member">Member</option>
-            </select>
-            <button type="submit" className="gradient-button w-full">
-              Send Invite
-            </button>
+        {canManageBoard ? (
+          <form onSubmit={handleInviteMember} className="glass-panel rounded-[2rem] p-5">
+            <h4 className="font-display text-2xl font-bold">Invite Member</h4>
+            <div className="mt-4 space-y-4">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                placeholder="member@company.com"
+                className="input-field"
+                required
+              />
+              <select
+                value={inviteRole}
+                onChange={(event) => setInviteRole(event.target.value)}
+                className="input-field"
+              >
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="member">Member</option>
+              </select>
+              <button type="submit" className="gradient-button w-full">
+                Send Invite
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="glass-panel rounded-[2rem] p-5">
+            <h4 className="font-display text-2xl font-bold">Access Level</h4>
+            <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+              Members can view progress, update their work, and follow conversations here. Project invites and task assignment are limited to managers, owners, and admins.
+            </p>
           </div>
-        </form>
+        )}
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>

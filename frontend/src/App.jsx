@@ -3,6 +3,7 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import RoleGuard from "./components/RoleGuard";
 import AppLayout from "./layouts/AppLayout";
 import Home from "./pages/Home";
+import MessagesPage from "./pages/MessagesPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
@@ -56,6 +57,12 @@ const App = () => (
       </Route>
 
       <Route
+        element={<AppLayout title="Messages" description="Review teammate updates, conversations, and delivery signals." />}
+      >
+        <Route path="/messages" element={<MessagesPage />} />
+      </Route>
+
+      <Route
         element={<AppLayout title="Search" description="Find projects, tasks, and teammates instantly." />}
       >
         <Route
@@ -68,7 +75,7 @@ const App = () => (
         />
       </Route>
 
-      <Route element={<AppLayout title="Profile" description="Update your identity, avatar, and credentials." />}>
+      <Route element={<AppLayout title="Settings" description="Manage your account, security, and workspace access." />}>
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
     </Route>
