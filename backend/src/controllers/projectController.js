@@ -4,7 +4,8 @@ import User from "../models/User.js";
 import { createActivity } from "../services/activityService.js";
 import { createNotification } from "../services/notificationService.js";
 import { createError } from "../utils/createError.js";
-import { ensureProjectAccess } from "../utils/projectAccess.js";
+import { ensureProjectAccess, getProjectPermissions } from "../utils/projectAccess.js";
+import { normalizeRole } from "../utils/roles.js";
 
 export const getProjects = async (req, res, next) => {
   try {
@@ -23,6 +24,11 @@ export const getProjects = async (req, res, next) => {
 
 export const createProject = async (req, res, next) => {
   try {
+    const role = normalizeRole(req.user.role);
+    if (!["super_admin", "owner"].includes(role)) {
+      throw createError(403, "Only super admins and project owners can create projects");
+    }
+
     const { title, description, deadline, members = [] } = req.body;
     const normalizedMembers = members.filter((member) => String(member.user) !== String(req.user._id));
 
@@ -82,8 +88,8 @@ export const updateProject = async (req, res, next) => {
       throw createError(404, "Project not found");
     }
 
-    const { isOwner } = ensureProjectAccess(project, req.user._id);
-    if (!isOwner) {
+    const permissions = getProjectPermissions(project, req.user);
+    if (!permissions.canManageProject) {
       throw createError(403, "Only the owner can update project details");
     }
 
@@ -115,8 +121,8 @@ export const deleteProject = async (req, res, next) => {
       throw createError(404, "Project not found");
     }
 
-    const { isOwner } = ensureProjectAccess(project, req.user._id);
-    if (!isOwner) {
+    const permissions = getProjectPermissions(project, req.user);
+    if (!permissions.canManageProject) {
       throw createError(403, "Only the owner can delete a project");
     }
 
@@ -137,8 +143,8 @@ export const inviteMember = async (req, res, next) => {
       throw createError(404, "Project not found");
     }
 
-    const { isOwner, membership } = ensureProjectAccess(project, req.user._id);
-    if (!isOwner && membership?.role !== "admin" && membership?.role !== "manager") {
+    const permissions = getProjectPermissions(project, req.user);
+    if (!permissions.canManageTeam) {
       throw createError(403, "You cannot invite members to this project");
     }
 
@@ -188,8 +194,8 @@ export const updateMemberRole = async (req, res, next) => {
       throw createError(404, "Project not found");
     }
 
-    const { isOwner } = ensureProjectAccess(project, req.user._id);
-    if (!isOwner) {
+    const permissions = getProjectPermissions(project, req.user);
+    if (!permissions.canManageTeam) {
       throw createError(403, "Only the owner can update member roles");
     }
 
@@ -213,8 +219,8 @@ export const removeMember = async (req, res, next) => {
       throw createError(404, "Project not found");
     }
 
-    const { isOwner } = ensureProjectAccess(project, req.user._id);
-    if (!isOwner) {
+    const permissions = getProjectPermissions(project, req.user);
+    if (!permissions.canManageTeam) {
       throw createError(403, "Only the owner can remove members");
     }
 

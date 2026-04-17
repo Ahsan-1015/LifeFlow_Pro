@@ -6,7 +6,7 @@ import User from "../models/User.js";
 import { createActivity } from "../services/activityService.js";
 import { createNotification } from "../services/notificationService.js";
 import { createError } from "../utils/createError.js";
-import { ensureProjectAccess } from "../utils/projectAccess.js";
+import { getProjectPermissions } from "../utils/projectAccess.js";
 
 const populateTask = (query) =>
   query.populate("assignedTo", "name email avatar").populate("createdBy", "name email avatar");
@@ -18,7 +18,10 @@ export const createTask = async (req, res, next) => {
       throw createError(404, "Project not found");
     }
 
-    ensureProjectAccess(project, req.user._id);
+    const permissions = getProjectPermissions(project, req.user);
+    if (!permissions.canManageTasks) {
+      throw createError(403, "You do not have permission to create tasks in this project");
+    }
 
     const task = await Task.create({
       ...req.body,
@@ -63,7 +66,21 @@ export const updateTask = async (req, res, next) => {
     }
 
     const project = await Project.findById(task.projectId);
-    ensureProjectAccess(project, req.user._id);
+    const permissions = getProjectPermissions(project, req.user, task);
+
+    if (!permissions.canManageTasks && !permissions.canUpdateOwnTask) {
+      throw createError(403, "You do not have permission to update this task");
+    }
+
+    if (permissions.canUpdateOwnTask && !permissions.canManageTasks) {
+      const incomingKeys = Object.keys(req.body || {});
+      const allowedKeys = ["status"];
+      const onlyAllowedKeys = incomingKeys.every((key) => allowedKeys.includes(key));
+
+      if (!onlyAllowedKeys) {
+        throw createError(403, "Members can only update their own task status");
+      }
+    }
 
     const previousStatus = task.status;
     const previousAssignee = task.assignedTo ? String(task.assignedTo) : null;
@@ -108,7 +125,10 @@ export const deleteTask = async (req, res, next) => {
     }
 
     const project = await Project.findById(task.projectId);
-    ensureProjectAccess(project, req.user._id);
+    const permissions = getProjectPermissions(project, req.user, task);
+    if (!permissions.canManageTasks) {
+      throw createError(403, "You do not have permission to delete this task");
+    }
 
     await Comment.deleteMany({ taskId: task._id });
     await task.deleteOne();
@@ -136,7 +156,7 @@ export const getTaskComments = async (req, res, next) => {
     }
 
     const project = await Project.findById(task.projectId);
-    ensureProjectAccess(project, req.user._id);
+    getProjectPermissions(project, req.user, task);
 
     const comments = await Comment.find({ taskId: task._id })
       .populate("userId", "name avatar email")
@@ -156,7 +176,10 @@ export const uploadAttachment = async (req, res, next) => {
     }
 
     const project = await Project.findById(task.projectId);
-    ensureProjectAccess(project, req.user._id);
+    const permissions = getProjectPermissions(project, req.user, task);
+    if (!permissions.canUploadTaskAttachment) {
+      throw createError(403, "You do not have permission to upload files to this task");
+    }
 
     if (!req.file) {
       throw createError(400, "Attachment file is required");

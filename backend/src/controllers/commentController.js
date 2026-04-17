@@ -4,7 +4,7 @@ import Task from "../models/Task.js";
 import { createActivity } from "../services/activityService.js";
 import { createNotification } from "../services/notificationService.js";
 import { createError } from "../utils/createError.js";
-import { ensureProjectAccess } from "../utils/projectAccess.js";
+import { getProjectPermissions } from "../utils/projectAccess.js";
 
 export const createComment = async (req, res, next) => {
   try {
@@ -14,7 +14,10 @@ export const createComment = async (req, res, next) => {
     }
 
     const project = await Project.findById(task.projectId);
-    ensureProjectAccess(project, req.user._id);
+    const permissions = getProjectPermissions(project, req.user, task);
+    if (!permissions.canLeaveFeedback) {
+      throw createError(403, "You do not have permission to comment on this task");
+    }
 
     const comment = await Comment.create({
       taskId: task._id,

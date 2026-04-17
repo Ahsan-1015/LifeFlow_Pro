@@ -892,8 +892,8 @@ const buildGuestDashboard = async ({ userId, unreadNotifications }) => {
       upcomingDeadlines: [],
       projects: [],
       charts: { milestoneTimeline: [] },
-      tables: { sharedMilestones: [] },
-      feeds: { feedback: [] },
+      tables: { sharedProjects: [], sharedMilestones: [], files: [], feedbackTargets: [], billingSummary: [] },
+      feeds: { feedback: [], files: [] },
     };
   }
 
@@ -920,6 +920,43 @@ const buildGuestDashboard = async ({ userId, unreadNotifications }) => {
   const upcomingDeliveries = sortByPriorityAndDeadline(
     tasks.filter((task) => task.deadline && new Date(task.deadline) >= startOfDay() && task.status !== "done")
   );
+  const sharedProjects = projects.map((project) => {
+    const stats = projectStats.get(String(project._id)) || {};
+    return {
+      id: project._id,
+      title: project.title,
+      description: project.description || "Shared with you for visibility and feedback.",
+      progress: `${percent(stats.done || 0, stats.total || 0)}%`,
+      deadline: project.deadline ? new Date(project.deadline).toLocaleDateString() : "TBD",
+      members: project.members.length,
+      screenshots: tasks.filter((task) => String(task.projectId) === String(project._id)).reduce((sum, task) => sum + (task.attachments?.length || 0), 0),
+    };
+  });
+  const sharedFiles = tasks
+    .flatMap((task) =>
+      (task.attachments || []).map((attachment, index) => ({
+        id: `${task._id}:${attachment.publicId || index}`,
+        title: attachment.originalName || "Shared file",
+        subtitle: `${task.title} • ${projects.find((project) => String(project._id) === String(task.projectId))?.title || "Unknown project"}`,
+        url: attachment.url,
+      }))
+    )
+    .slice(0, 12);
+  const feedbackTargets = tasks
+    .filter((task) => task.status !== "done")
+    .slice(0, 12)
+    .map((task) => ({
+      id: String(task._id),
+      title: task.title,
+      project: projects.find((project) => String(project._id) === String(task.projectId))?.title || "Unknown project",
+    }));
+  const billingSummary = sharedProjects.map((project) => ({
+    id: project.id,
+    workspace: project.title,
+    members: project.members,
+    plan: project.members >= 8 ? "Scale" : project.members >= 4 ? "Growth" : "Starter",
+    delivery: project.deadline,
+  }));
 
   return {
     role: "guest",
@@ -934,7 +971,7 @@ const buildGuestDashboard = async ({ userId, unreadNotifications }) => {
     recentActivity: [],
     upcomingDeadlines: upcomingDeliveries.slice(0, 5),
     projects,
-    charts: {
+      charts: {
       milestoneTimeline: projects
         .slice()
         .sort((left, right) => {
@@ -952,15 +989,20 @@ const buildGuestDashboard = async ({ userId, unreadNotifications }) => {
         }),
     },
     tables: {
+      sharedProjects,
       sharedMilestones: projects.map((project) => {
         const stats = projectStats.get(String(project._id)) || {};
         return {
           id: project._id,
+          projectId: String(project._id),
           milestone: project.title,
           progress: `${percent(stats.done || 0, stats.total || 0)}%`,
           delivery: project.deadline ? new Date(project.deadline).toLocaleDateString() : "TBD",
         };
       }),
+      files: sharedFiles,
+      feedbackTargets,
+      billingSummary,
     },
     feeds: {
       feedback: relevantComments.slice(0, 6).map((comment) => ({
@@ -968,6 +1010,7 @@ const buildGuestDashboard = async ({ userId, unreadNotifications }) => {
         title: comment.message,
         subtitle: `${comment.userId?.name || "Collaborator"} on ${comment.taskId?.title || "Task"}`,
       })),
+      files: sharedFiles,
     },
   };
 };
