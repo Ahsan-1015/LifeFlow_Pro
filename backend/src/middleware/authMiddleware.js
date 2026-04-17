@@ -18,6 +18,14 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
+    if (user.isDeleted) {
+      return res.status(403).json({ message: "This account is no longer available" });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ message: "This account has been blocked by an administrator" });
+    }
+
     user.role = normalizeRole(user.role);
     req.user = user;
     next();

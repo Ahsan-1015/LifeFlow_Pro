@@ -162,6 +162,8 @@ const getScopedProjects = (role, userId) =>
     .sort({ updatedAt: -1 })
     .lean();
 
+const activeUserFilter = { isDeleted: { $ne: true } };
+
 const buildSuperAdminDashboard = async ({ userId, unreadNotifications }) => {
   const today = startOfDay();
   const monthStart = addDays(today, -29);
@@ -169,7 +171,7 @@ const buildSuperAdminDashboard = async ({ userId, unreadNotifications }) => {
   const previousMonthEnd = addDays(monthStart, -1);
 
   const [users, projects, tasks, activities] = await Promise.all([
-    User.find().sort({ createdAt: -1 }).lean(),
+    User.find(activeUserFilter).sort({ createdAt: -1 }).lean(),
     Project.find()
       .populate("owner", "name email avatar role")
       .populate("members.user", "name email avatar role")
@@ -194,6 +196,7 @@ const buildSuperAdminDashboard = async ({ userId, unreadNotifications }) => {
   const overdueTasks = sortByPriorityAndDeadline(
     tasks.filter((task) => task.deadline && new Date(task.deadline) < new Date() && task.status !== "done")
   );
+  const pendingOwnerApprovals = users.filter((user) => user.ownerAccessStatus === "pending").length;
   const taskStatusBreakdown = getTaskStatusBreakdown(tasks);
   const userProjectMemberships = new Map();
 
@@ -215,10 +218,14 @@ const buildSuperAdminDashboard = async ({ userId, unreadNotifications }) => {
     id: user._id,
     name: user.name,
     email: user.email,
+    avatar: user.avatar || "",
     roleKey: normalizeRole(user.role),
     role: normalizeRole(user.role).replace("_", " "),
     projects: userProjectMemberships.get(String(user._id)) || 0,
-    status: new Date(user.updatedAt) >= addDays(today, -7) ? "Active" : "Dormant",
+    status: user.isBlocked ? "Blocked" : new Date(user.updatedAt) >= addDays(today, -7) ? "Active" : "Dormant",
+    isBlocked: Boolean(user.isBlocked),
+    ownerAccessStatus:
+      user.ownerAccessStatus || (normalizeRole(user.role) === "owner" ? "approved" : "none"),
     joined: new Date(user.createdAt).toLocaleDateString(),
   }));
 
@@ -303,6 +310,7 @@ const buildSuperAdminDashboard = async ({ userId, unreadNotifications }) => {
       estimatedMonthlyValue: formatCurrency(workspaceValue),
       avgWorkspaceValue: formatCurrency(allProjects.length > 0 ? Math.round(workspaceValue / allProjects.length) : 0),
       atRiskProjects: allProjects.filter((project) => project.health === "At risk").length,
+      pendingOwnerApprovals,
       unreadNotifications,
     },
     recentActivity: activities,
@@ -381,6 +389,11 @@ const buildSuperAdminDashboard = async ({ userId, unreadNotifications }) => {
           title: `${allProjects.filter((project) => project.health === "At risk").length} projects are currently at risk`,
           subtitle: "Use support and reports sections to intervene before deadlines slip further",
         },
+        {
+          id: "owner-approvals",
+          title: `${pendingOwnerApprovals} owner approvals are waiting`,
+          subtitle: pendingOwnerApprovals > 0 ? "Review pending owner access requests from the user directory" : "No owner approvals are waiting right now",
+        },
       ],
     },
   };
@@ -400,14 +413,16 @@ const buildOwnerDashboard = async ({ userId, unreadNotifications }) => {
         completedTasks: 0,
         teamMembers: 0,
         upcomingDeadlinesCount: 0,
+        activeManagers: 0,
+        ownerWorkspaceValue: formatCurrency(0),
         unreadNotifications,
       },
       recentActivity: [],
       upcomingDeadlines: [],
       projects: [],
-      charts: { weeklyCompleted: [] },
-      tables: { projectHealth: [] },
-      feeds: { activity: [], deadlines: [] },
+      charts: { weeklyCompleted: [], statusMix: [] },
+      tables: { projectHealth: [], teamDirectory: [], taskOperations: [], billingSummary: [] },
+      feeds: { activity: [], deadlines: [], teamHighlights: [] },
     };
   }
 
@@ -422,10 +437,14 @@ const buildOwnerDashboard = async ({ userId, unreadNotifications }) => {
 
   const projectStats = getProjectStatsMap(projects, tasks);
   const uniqueMembers = new Map();
+  const managerIds = new Set();
   projects.forEach((project) => {
     project.members.forEach((member) => {
       if (member.user?._id) {
         uniqueMembers.set(String(member.user._id), member.user);
+        if (member.role === "manager" || member.role === "admin") {
+          managerIds.add(String(member.user._id));
+        }
       }
     });
   });
@@ -433,6 +452,44 @@ const buildOwnerDashboard = async ({ userId, unreadNotifications }) => {
   const upcomingDeadlines = sortByPriorityAndDeadline(
     tasks.filter((task) => task.deadline && new Date(task.deadline) >= startOfDay() && task.status !== "done")
   ).slice(0, 8);
+  const workspaceValue = projects.reduce((sum, project) => {
+    if (project.members.length >= 8) return sum + 299;
+    if (project.members.length >= 4) return sum + 149;
+    return sum + 49;
+  }, 0);
+  const teamDirectory = projects.flatMap((project) =>
+    project.members
+      .filter((member) => member.user?._id)
+      .map((member) => ({
+        id: `${project._id}:${member.user._id}`,
+        projectId: String(project._id),
+        memberId: String(member.user._id),
+        project: project.title,
+        name: member.user.name,
+        email: member.user.email,
+        avatar: member.user.avatar || "",
+        role: member.role,
+      }))
+  );
+  const taskOperations = sortByPriorityAndDeadline(tasks)
+    .slice(0, 14)
+    .map((task) => ({
+      id: task._id,
+      projectId: String(task.projectId),
+      task: task.title,
+      project: projects.find((project) => String(project._id) === String(task.projectId))?.title || "Unknown project",
+      assignee: task.assignedTo?.name || "Unassigned",
+      priority: task.priority,
+      status: task.status,
+      deadline: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
+    }));
+  const billingSummary = projects.map((project) => ({
+    id: project._id,
+    workspace: project.title,
+    members: project.members.length,
+    plan: project.members.length >= 8 ? "Scale" : project.members.length >= 4 ? "Growth" : "Starter",
+    value: formatCurrency(project.members.length >= 8 ? 299 : project.members.length >= 4 ? 149 : 49),
+  }));
 
   return {
     role: "owner",
@@ -443,6 +500,8 @@ const buildOwnerDashboard = async ({ userId, unreadNotifications }) => {
       completedTasks: tasks.filter((task) => task.status === "done").length,
       teamMembers: uniqueMembers.size,
       upcomingDeadlinesCount: upcomingDeadlines.length,
+      activeManagers: managerIds.size,
+      ownerWorkspaceValue: formatCurrency(workspaceValue),
       unreadNotifications,
     },
     recentActivity: activities,
@@ -456,22 +515,35 @@ const buildOwnerDashboard = async ({ userId, unreadNotifications }) => {
           getDate: (item) => item.updatedAt,
         },
       ]),
+      statusMix: getTaskStatusBreakdown(tasks),
     },
     tables: {
       projectHealth: projects.map((project) => {
         const stats = projectStats.get(String(project._id)) || {};
         return {
           id: project._id,
+          projectId: String(project._id),
           project: project.title,
           progress: `${percent(stats.done || 0, stats.total || 0)}%`,
           deadline: project.deadline ? new Date(project.deadline).toLocaleDateString() : "Flexible",
           members: project.members.length,
+          tasks: stats.total || 0,
+          review: stats.review || 0,
+          pending: stats.pending || 0,
         };
       }),
+      teamDirectory,
+      taskOperations,
+      billingSummary,
     },
     feeds: {
       activity: toActivityItems(activities),
       deadlines: toDeadlineItems(upcomingDeadlines),
+      teamHighlights: teamDirectory.slice(0, 8).map((member) => ({
+        id: member.id,
+        title: `${member.name} • ${member.role}`,
+        subtitle: `${member.project} • ${member.email}`,
+      })),
     },
   };
 };
@@ -559,9 +631,11 @@ const buildManagerDashboard = async ({ userId, unreadNotifications }) => {
   });
   const teamTasks = sortByPriorityAndDeadline(tasks).map((task) => ({
     id: task._id,
+    projectId: String(task.projectId),
     task: task.title,
     project: projectMap.get(String(task.projectId))?.title || "Unknown project",
     owner: task.assignedTo?.name || "Unassigned",
+    assignedToId: task.assignedTo?._id ? String(task.assignedTo._id) : "",
     status: task.status,
     priority: task.priority,
     deadline: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
@@ -577,10 +651,13 @@ const buildManagerDashboard = async ({ userId, unreadNotifications }) => {
     if (!boardColumns[task.status]) return;
     boardColumns[task.status].push({
       id: task._id,
+      projectId: String(task.projectId),
       title: task.title,
       project: projectMap.get(String(task.projectId))?.title || "Unknown project",
       assignee: task.assignedTo?.name || "Unassigned",
+      assignedToId: task.assignedTo?._id ? String(task.assignedTo._id) : "",
       priority: task.priority,
+      status: task.status,
       deadline: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
     });
   });
@@ -622,9 +699,11 @@ const buildManagerDashboard = async ({ userId, unreadNotifications }) => {
       teamPerformance,
       reviewQueue: reviewQueue.slice(0, 8).map((task) => ({
         id: task._id,
+        projectId: String(task.projectId),
         task: task.title,
         project: projectMap.get(String(task.projectId))?.title || "Unknown project",
         owner: task.assignedTo?.name || "Unassigned",
+        assignedToId: task.assignedTo?._id ? String(task.assignedTo._id) : "",
         priority: task.priority,
         status: "Review",
         deadline: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",

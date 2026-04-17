@@ -26,21 +26,21 @@ const sectionTitles = {
   reports: "Team performance reports",
 };
 
-const ManagerDashboard = ({ dashboard, section = "overview" }) => {
+const ManagerDashboard = ({ dashboard, section = "overview", onRefresh }) => {
   const performanceRows = dashboard.tables?.teamPerformance || [];
   const approvalRows = dashboard.tables?.reviewQueue || [];
   const reviewSeries = dashboard.charts?.reviewFlow || [];
 
   if (section === "team-tasks") {
-    return <ManagerTeamTasksPanel dashboard={dashboard} />;
+    return <ManagerTeamTasksPanel dashboard={dashboard} onRefresh={onRefresh} />;
   }
 
   if (section === "kanban") {
-    return <ManagerKanbanPanel dashboard={dashboard} />;
+    return <ManagerKanbanPanel dashboard={dashboard} onRefresh={onRefresh} />;
   }
 
   if (section === "reviews") {
-    return <ManagerReviewsPanel dashboard={dashboard} />;
+    return <ManagerReviewsPanel dashboard={dashboard} onRefresh={onRefresh} />;
   }
 
   if (section === "messages") {

@@ -51,6 +51,20 @@ const mapFirebaseAuthError = (error) => {
   return createError(500, "Failed to sync user with Firebase Authentication");
 };
 
+const ensureUserAccess = (user) => {
+  if (!user) {
+    throw createError(401, "Invalid email or password");
+  }
+
+  if (user.isDeleted) {
+    throw createError(403, "This account is no longer available");
+  }
+
+  if (user.isBlocked) {
+    throw createError(403, "This account has been blocked by an administrator");
+  }
+};
+
 export const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -58,6 +72,9 @@ export const register = async (req, res, next) => {
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
+      if (existingUser.isDeleted) {
+        throw createError(409, "This email belongs to a deleted account and cannot be registered again right now");
+      }
       throw createError(409, "Email is already registered");
     }
 
@@ -86,6 +103,8 @@ export const register = async (req, res, next) => {
         password: hashedPassword,
         provider: "local",
         firebaseUid,
+        role: "member",
+        ownerAccessStatus: "none",
       });
     } catch (error) {
       if (createdFirebaseUser && firebaseUid && hasFirebaseAdminConfig()) {
@@ -102,6 +121,7 @@ export const register = async (req, res, next) => {
         email: user.email,
         avatar: user.avatar,
         role: normalizeRole(user.role),
+        ownerAccessStatus: user.ownerAccessStatus,
       },
     });
   } catch (error) {
@@ -115,9 +135,7 @@ export const login = async (req, res, next) => {
     const normalizedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
 
-    if (!user) {
-      throw createError(401, "Invalid email or password");
-    }
+    ensureUserAccess(user);
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
@@ -132,6 +150,7 @@ export const login = async (req, res, next) => {
         email: user.email,
         avatar: user.avatar,
         role: normalizeRole(user.role),
+        ownerAccessStatus: user.ownerAccessStatus,
       },
     });
   } catch (error) {
@@ -171,6 +190,8 @@ export const googleAuth = async (req, res, next) => {
         provider: "google",
         googleUid: decodedToken.uid,
         firebaseUid: decodedToken.uid,
+        role: "member",
+        ownerAccessStatus: "none",
       });
     } else {
       user.name = decodedToken.name || user.name;
@@ -181,6 +202,8 @@ export const googleAuth = async (req, res, next) => {
       await user.save();
     }
 
+    ensureUserAccess(user);
+
     res.json({
       token: generateToken(user._id, user.role),
       user: {
@@ -190,6 +213,7 @@ export const googleAuth = async (req, res, next) => {
         avatar: user.avatar,
         role: normalizeRole(user.role),
         provider: user.provider,
+        ownerAccessStatus: user.ownerAccessStatus,
       },
     });
   } catch (error) {

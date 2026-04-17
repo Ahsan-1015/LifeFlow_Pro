@@ -20,6 +20,10 @@ const userSchema = new mongoose.Schema(
       default: undefined,
     },
     avatar: { type: String, default: "" },
+    isBlocked: { type: Boolean, default: false },
+    blockedAt: { type: Date, default: null },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
     provider: {
       type: String,
       enum: ["local", "google"],
@@ -40,6 +44,13 @@ const userSchema = new mongoose.Schema(
       enum: [...APP_ROLES, "admin"],
       default: "member",
     },
+    ownerAccessStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none",
+    },
+    ownerAccessRequestedAt: { type: Date, default: null },
+    ownerAccessReviewedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

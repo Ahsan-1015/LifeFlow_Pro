@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import cloudinary, { hasCloudinaryConfig } from "../config/cloudinary.js";
 import User from "../models/User.js";
+import { createNotification } from "../services/notificationService.js";
 import { createError } from "../utils/createError.js";
 
 export const updateProfile = async (req, res, next) => {
@@ -15,6 +16,7 @@ export const updateProfile = async (req, res, next) => {
       email: user.email,
       avatar: user.avatar,
       role: user.role,
+      ownerAccessStatus: user.ownerAccessStatus,
     });
   } catch (error) {
     next(error);
@@ -81,6 +83,59 @@ export const uploadAvatar = async (req, res, next) => {
     ).select("-password");
 
     res.json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requestOwnerAccess = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      throw createError(404, "User not found");
+    }
+
+    if (["owner", "super_admin", "admin"].includes(user.role)) {
+      throw createError(400, "This account already has elevated workspace access");
+    }
+
+    if (user.ownerAccessStatus === "pending") {
+      return res.json({
+        message: "Your owner access request is already pending review",
+        ownerAccessStatus: user.ownerAccessStatus,
+      });
+    }
+
+    user.ownerAccessStatus = "pending";
+    user.ownerAccessRequestedAt = new Date();
+    user.ownerAccessReviewedAt = null;
+    await user.save();
+
+    const superAdmins = await User.find({
+      role: { $in: ["super_admin", "admin"] },
+      isDeleted: { $ne: true },
+      isBlocked: { $ne: true },
+    }).select("_id");
+
+    await Promise.all(
+      superAdmins.map((admin) =>
+        createNotification(req.io, {
+          userId: admin._id,
+          message: `${user.name} requested project owner approval`,
+          type: "owner_access_request",
+          metadata: {
+            requestedBy: user._id,
+          },
+        })
+      )
+    );
+
+    res.json({
+      message: "Owner access request sent to the super admin team",
+      ownerAccessStatus: user.ownerAccessStatus,
+      ownerAccessRequestedAt: user.ownerAccessRequestedAt,
+    });
   } catch (error) {
     next(error);
   }
