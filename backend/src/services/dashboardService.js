@@ -741,6 +741,7 @@ const buildMemberDashboard = async ({ userId, unreadNotifications }) => {
   ]);
 
   const assignedTaskIds = assignedTasks.map((task) => task._id);
+  const projectMap = new Map(projects.map((project) => [String(project._id), project]));
 
   const [activities, comments] = await Promise.all([
     Activity.find({ projectId: { $in: projects.map((project) => project._id) } })
@@ -762,9 +763,66 @@ const buildMemberDashboard = async ({ userId, unreadNotifications }) => {
   const activeThisWeek = assignedTasks.filter((task) => new Date(task.updatedAt) >= addDays(today, -6)).length;
   const productivityScore = `${percent(completedThisWeek, activeThisWeek || assignedTasks.length || 1)}%`;
   const focusTasks = sortByPriorityAndDeadline(assignedTasks.filter((task) => task.status !== "done")).slice(0, 3);
+  const openTasks = sortByPriorityAndDeadline(assignedTasks.filter((task) => task.status !== "done"));
   const upcomingDeadlines = sortByPriorityAndDeadline(
     assignedTasks.filter((task) => task.deadline && new Date(task.deadline) >= today && task.status !== "done")
   ).slice(0, 6);
+  const myTasks = sortByPriorityAndDeadline(assignedTasks).map((task) => ({
+    id: task._id,
+    projectId: String(task.projectId),
+    task: task.title,
+    project: projectMap.get(String(task.projectId))?.title || "Unknown project",
+    status: task.status,
+    priority: task.priority,
+    due: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
+    attachments: task.attachments?.length || 0,
+  }));
+  const fileItems = assignedTasks
+    .flatMap((task) =>
+      (task.attachments || []).map((attachment, index) => ({
+        id: `${task._id}:${attachment.publicId || index}`,
+        taskId: String(task._id),
+        title: attachment.originalName || "Attachment",
+        subtitle: `${task.title} • ${projectMap.get(String(task.projectId))?.title || "Unknown project"}`,
+        url: attachment.url,
+      }))
+    )
+    .slice(0, 12);
+  const miniBoard = {
+    todo: openTasks
+      .filter((task) => task.status === "todo")
+      .slice(0, 4)
+      .map((task) => ({
+        id: task._id,
+        projectId: String(task.projectId),
+        title: task.title,
+        project: projectMap.get(String(task.projectId))?.title || "Unknown project",
+        priority: task.priority,
+        due: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
+      })),
+    doing: openTasks
+      .filter((task) => task.status === "inprogress" || task.status === "review")
+      .slice(0, 4)
+      .map((task) => ({
+        id: task._id,
+        projectId: String(task.projectId),
+        title: task.title,
+        project: projectMap.get(String(task.projectId))?.title || "Unknown project",
+        priority: task.priority,
+        due: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
+      })),
+    done: assignedTasks
+      .filter((task) => task.status === "done")
+      .slice(0, 4)
+      .map((task) => ({
+        id: task._id,
+        projectId: String(task.projectId),
+        title: task.title,
+        project: projectMap.get(String(task.projectId))?.title || "Unknown project",
+        priority: task.priority,
+        due: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
+      })),
+  };
 
   return {
     role: "member",
@@ -794,10 +852,15 @@ const buildMemberDashboard = async ({ userId, unreadNotifications }) => {
     tables: {
       focusTasks: focusTasks.map((task) => ({
         id: task._id,
+        taskId: String(task._id),
+        projectId: String(task.projectId),
         task: task.title,
         status: task.status,
+        priority: task.priority,
         due: task.deadline ? new Date(task.deadline).toLocaleDateString() : "Flexible",
       })),
+      myTasks,
+      files: fileItems,
     },
     feeds: {
       deadlines: toDeadlineItems(upcomingDeadlines),
@@ -808,6 +871,7 @@ const buildMemberDashboard = async ({ userId, unreadNotifications }) => {
       })),
       activity: toActivityItems(activities),
     },
+    boards: miniBoard,
   };
 };
 
