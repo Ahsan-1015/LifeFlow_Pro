@@ -1,0 +1,30 @@
+Error: [31m  Failed to scan for dependencies from entries:
+  Z:/Projects/CodeAlpha_Task/Project Management SaaS Web App/frontend/index.html
+
+  [39mspawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:420:11)
+    at Object.spawn (node:child_process:759:9)
+    at ensureServiceIsRunning (Z:\Projects\CodeAlpha_Task\Project Management SaaS Web App\node_modules\esbuild\lib\main.js:1975:29)
+    at Object.context (Z:\Projects\CodeAlpha_Task\Project Management SaaS Web App\node_modules\esbuild\lib\main.js:1874:33)
+    at prepareEsbuildScanner (file:///Z:/Projects/CodeAlpha_Task/Project%20Management%20SaaS%20Web%20App/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49578:24)
+    at async file:///Z:/Projects/CodeAlpha_Task/Project%20Management%20SaaS%20Web%20App/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:50176:26
+[2m1:35:09 AM[22m [31m[1m[vite][22m[39m Pre-transform error: spawn EPERM
+[2m1:35:09 AM[22m [31m[1m[vite][22m[39m Pre-transform error: spawn EPERM
+[2m1:35:09 AM[22m [31m[1m[vite][22m[39m [31mInternal server error: spawn EPERM[39m
+  Plugin: [35mvite:esbuild[39m
+  File: [36mZ:/Projects/CodeAlpha_Task/Project Management SaaS Web App/frontend/src/main.jsx[39m
+      at ChildProcess.spawn (node:internal/child_process:420:11)
+      at Object.spawn (node:child_process:759:9)
+      at ensureServiceIsRunning (Z:\Projects\CodeAlpha_Task\Project Management SaaS Web App\node_modules\esbuild\lib\main.js:1975:29)
+      at transform (Z:\Projects\CodeAlpha_Task\Project Management SaaS Web App\node_modules\esbuild\lib\main.js:1875:37)
+      at transformWithEsbuild (file:///Z:/Projects/CodeAlpha_Task/Project%20Management%20SaaS%20Web%20App/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:19234:26)
+      at TransformPluginContext.transform (file:///Z:/Projects/CodeAlpha_Task/Project%20Management%20SaaS%20Web%20App/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:19299:30)
+      at PluginContainer.transform (file:///Z:/Projects/CodeAlpha_Task/Project%20Management%20SaaS%20Web%20App/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49102:19)
+      at async loadAndTransform (file:///Z:/Projects/CodeAlpha_Task/Project%20Management%20SaaS%20Web%20App/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51980:27)
+[2m1:35:09 AM[22m [31m[1m[vite][22m[39m [31merror while updating dependencies:
+Error: spawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:420:11)
+    at Object.spawn (node:child_process:759:9)
+    at ensureServiceIsRunning (Z:\Projects\CodeAlpha_Task\Project Management SaaS Web App\node_modules\esbuild\lib\main.js:1975:29)
+    at Object.context (Z:\Projects\CodeAlpha_Task\Project Management SaaS Web App\node_modules\esbuild\lib\main.js:1874:33)
+    at prepareEsbuildOptimizerRun (file:///Z:/Projects/CodeAlpha_Task/Project%20Management%20SaaS%20Web%20App/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:50929:33)[39m
