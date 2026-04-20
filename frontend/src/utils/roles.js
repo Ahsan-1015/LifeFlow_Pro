@@ -36,7 +36,7 @@ export const roleMenus = {
     { key: "calendar", label: "Calendar", to: "/dashboard/calendar" },
     { key: "reports", label: "Reports", to: "/dashboard/reports" },
     { key: "billing", label: "Billing", to: "/dashboard/billing" },
-    { key: "settings", label: "Settings", to: "/profile" },
+    { key: "settings", label: "Settings", to: "/dashboard/settings" },
   ],
   manager: [
     { key: "overview", label: "Dashboard", to: "/dashboard" },
