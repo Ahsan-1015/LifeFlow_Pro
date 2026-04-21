@@ -209,30 +209,96 @@ Set:
 - `VITE_API_URL=http://localhost:5000/api`
 - `VITE_SOCKET_URL=http://localhost:5000`
 
+## 🌐 Live Demo
+
+| Service          | URL                                          |
+| ---------------- | -------------------------------------------- |
+| **Frontend**     | https://life-flow-pro.vercel.app             |
+| **Backend API**  | https://lifeflow-pro.onrender.com            |
+| **Health Check** | https://lifeflow-pro.onrender.com/api/health |
+
+---
+
 ## Deployment
 
-### Frontend on Vercel
+### Frontend → Vercel
 
-- Root directory: `frontend`
-- Build command: `npm run build`
-- Output directory: `dist`
-- Add `VITE_API_URL` and `VITE_SOCKET_URL`
+**Live URL:** https://life-flow-pro.vercel.app
 
-### Backend on Render
+1. Go to [vercel.com](https://vercel.com) → Import GitHub repo
+2. Configure:
+   - **Root Directory:** `frontend`
+   - **Framework Preset:** Vite
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+3. Add Environment Variables in Vercel dashboard:
+   ```
+   VITE_API_URL=https://lifeflow-pro.onrender.com/api
+   VITE_SOCKET_URL=https://lifeflow-pro.onrender.com
+   VITE_FIREBASE_API_KEY=your_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
+   ```
+4. `frontend/vercel.json` is already included to fix React Router page-refresh 404s.
 
-- Root directory: `backend`
-- Build command: `npm install`
-- Start command: `npm start`
-- Add environment variables from `backend/.env.example`
+> **Note:** `frontend/.env.production` is committed to the repo and is automatically used by Vite during production builds (`npm run build`). For local development, `frontend/.env` (git-ignored) is used instead.
+
+---
+
+### Backend → Render
+
+**Live URL:** https://lifeflow-pro.onrender.com
+
+1. Go to [render.com](https://render.com) → New Web Service → Connect GitHub repo
+2. Configure:
+   - **Root Directory:** `backend`
+   - **Build Command:** `npm install`
+   - **Start Command:** `node src/server.js`
+3. Add Environment Variables in Render dashboard:
+   ```
+   PORT=10000
+   MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/project-management-saas
+   CLIENT_URL=http://localhost:5173,https://life-flow-pro.vercel.app
+   JWT_SECRET=your_strong_secret
+   JWT_EXPIRES_IN=7d
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
+   FIREBASE_PROJECT_ID=your_project_id
+   FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@project.iam.gserviceaccount.com
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+   ```
+
+> **Important:** `CLIENT_URL` supports comma-separated values — include both localhost and your Vercel URL so CORS works in both environments.
+
+---
 
 ### MongoDB Atlas
 
-- Create cluster
-- Whitelist deployment IPs
-- Replace `MONGODB_URI` in backend env
+1. Create a free cluster at [mongodb.com/atlas](https://mongodb.com/atlas)
+2. Whitelist all IPs (`0.0.0.0/0`) or add Render's outbound IPs
+3. Create a database user and copy the connection string into `MONGODB_URI`
+
+---
+
+### Firebase Setup
+
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Enable **Authentication** → **Sign-in methods** → Enable **Google** and **Email/Password**
+3. Add Authorized Domains:
+   - `localhost`
+   - `life-flow-pro.vercel.app`
+4. Copy web app config into `frontend/.env` (local) — `frontend/.env.production` already has the values for production.
+5. Generate a **service account** private key for Firebase Admin SDK and add values to backend env vars.
+
+---
 
 ## Notes
 
 - The app is scaffolded in a modular, portfolio-friendly structure.
 - Upload features require valid Cloudinary credentials.
 - Because package installation was not run in this environment, you should install dependencies before starting the app locally.
+- Socket.IO requires a persistent server — Vercel (serverless) is used **only for the frontend**. The backend runs on Render which supports long-lived connections.
